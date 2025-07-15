@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Worker Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f2f2f2;
+    }
+    .login-container, .container {
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      margin-top: 0;
+    }
+    input, select, button {
+      padding: 10px;
+      margin: 8px 0;
+      width: 100%;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    table, th, td {
+      border: 1px solid #ddd;
+    }
+    th, td {
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+    }
+    .hidden {
+      display: none;
+    }
+    .inline {
+      display: inline-block;
+      width: 48%;
+    }
+    .delete-btn {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      cursor: pointer;
+      padding: 5px 10px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container" id="loginScreen">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Enter username">
+    <input type="password" id="password" placeholder="Enter password">
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div class="container hidden" id="mainApp">
+    <h2>Worker Tracker - Raju</h2>
+
+    <div class="inline">
+      <label>Daily Wage:</label>
+      <input type="number" id="dailyWageInput" value="500" min="0">
+    </div>
+    <div class="inline">
+      <label>Hourly Rate:</label>
+      <input type="number" id="hourlyRateInput" value="50" min="0">
+    </div>
+
+    <label>Date:</label>
+    <input type="date" id="workDate">
+
+    <label>Worked Today?</label>
+    <select id="workedToday">
+      <option value="yes">Yes</option>
+      <option value="no">No</option>
+    </select>
+
+    <label>Extra Hours:</label>
+    <input type="number" id="extraHours" min="0">
+
+    <label>Advance Given:</label>
+    <input type="number" id="advanceGiven" min="0">
+
+    <label>Loan Given:</label>
+    <input type="number" id="loanGiven" min="0">
+
+    <button onclick="addEntry()">Add Entry</button>
+    <button onclick="downloadCSV()">Download Summary (Excel)</button>
+
+    <div id="summary"></div>
+
+    <table id="logTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Worked</th>
+          <th>Extra Hours</th>
+          <th>Advance</th>
+          <th>Loan</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    let entries = [];
+    const correctUsername = "admin";
+    const correctPassword = "raju123";
+
+    function login() {
+      const user = document.getElementById("username").value;
+      const pass = document.getElementById("password").value;
+      if (user === correctUsername && pass === correctPassword) {
+        document.getElementById("loginScreen").classList.add("hidden");
+        document.getElementById("mainApp").classList.remove("hidden");
+      } else {
+        alert("Incorrect username or password");
+      }
+    }
+
+    function addEntry() {
+      const date = document.getElementById("workDate").value;
+      const worked = document.getElementById("workedToday").value;
+      const extra = parseInt(document.getElementById("extraHours").value) || 0;
+      const advance = parseInt(document.getElementById("advanceGiven").value) || 0;
+      const loan = parseInt(document.getElementById("loanGiven").value) || 0;
+
+      entries.push({ date, worked, extra, advance, loan });
+      updateTable();
+      updateSummary();
+
+      fetch("https://script.google.com/macros/s/AKfycby8dX266GmUnTA9_je87kRsZhXZjZ73lXuFYHUfk2o/exec", {
+        method: "POST",
+        body: JSON.stringify({ date, worked, extra, advance, loan }),
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+      .then(res => console.log("Saved to Google Sheet"))
+      .catch(err => console.error("Failed to save", err));
+    }
+
+    function deleteEntry(index) {
+      entries.splice(index, 1);
+      updateTable();
+      updateSummary();
+    }
+
+    function updateTable() {
+      const tbody = document.querySelector("#logTable tbody");
+      tbody.innerHTML = "";
+      entries.forEach((e, i) => {
+        const row = `<tr>
+          <td>${e.date}</td>
+          <td>${e.worked}</td>
+          <td>${e.extra}</td>
+          <td>${e.advance}</td>
+          <td>${e.loan}</td>
+          <td><button class='delete-btn' onclick='deleteEntry(${i})'>Delete</button></td>
+        </tr>`;
+        tbody.innerHTML += row;
+      });
+    }
+
+    function updateSummary() {
+      const dailyWage = parseInt(document.getElementById("dailyWageInput").value) || 0;
+      const hourlyRate = parseInt(document.getElementById("hourlyRateInput").value) || 0;
+
+      let daysWorked = entries.filter(e => e.worked === "yes").length;
+      let totalExtraHours = entries.reduce((sum, e) => sum + e.extra, 0);
+      let totalAdvance = entries.reduce((sum, e) => sum + e.advance, 0);
+      let totalLoan = entries.reduce((sum, e) => sum + e.loan, 0);
+      let earned = daysWorked * dailyWage + totalExtraHours * hourlyRate;
+      let netPayable = earned - totalAdvance - totalLoan;
+
+      document.getElementById("summary").innerHTML = `
+        <p><strong>Days Worked:</strong> ${daysWorked}</p>
+        <p><strong>Total Extra Hours:</strong> ${totalExtraHours}</p>
+        <p><strong>Salary Earned:</strong> ₹${earned}</p>
+        <p><strong>Advance Paid:</strong> ₹${totalAdvance}</p>
+        <p><strong>Loan Given:</strong> ₹${totalLoan}</p>
+        <p><strong>Net Payable:</strong> ₹${netPayable}</p>
+      `;
+    }
+
+    function downloadCSV() {
+      let csv = "Date,Worked,Extra Hours,Advance,Loan\n";
+      entries.forEach(e => {
+        csv += `${e.date},${e.worked},${e.extra},${e.advance},${e.loan}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'WorkerSummary.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
