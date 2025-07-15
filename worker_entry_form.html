@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Worker Entry</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 400px;
+      margin: 50px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 20px;
+    }
+    input, select, button {
+      padding: 10px;
+      margin: 10px 0;
+      width: 100%;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    #status {
+      margin-top: 10px;
+      font-weight: bold;
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Today's Work Entry</h2>
+
+    <label>Date:</label>
+    <input type="date" id="workDate" required>
+
+    <label>Worked Today?</label>
+    <select id="workedToday">
+      <option value="yes">Yes</option>
+      <option value="no">No</option>
+    </select>
+
+    <label>Extra Hours:</label>
+    <input type="number" id="extraHours" min="0" placeholder="Enter extra hours">
+
+    <button onclick="submitEntry()">Submit</button>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    function submitEntry() {
+      const date = document.getElementById("workDate").value;
+      const worked = document.getElementById("workedToday").value;
+      const extra = parseInt(document.getElementById("extraHours").value) || 0;
+
+      fetch("https://script.google.com/macros/s/AKfycby8dX266GmUnTA9_je87kRsZhXZjZ73lXuFYHUfk2o/exec", {
+        method: "POST",
+        body: JSON.stringify({ date, worked, extra, advance: 0, loan: 0 }),
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+      .then(res => {
+        document.getElementById("status").innerText = "Entry submitted successfully!";
+        document.getElementById("workDate").value = "";
+        document.getElementById("extraHours").value = "";
+      })
+      .catch(err => {
+        document.getElementById("status").style.color = 'red';
+        document.getElementById("status").innerText = "Error submitting entry.";
+        console.error("Submission failed", err);
+      });
+    }
+  </script>
+</body>
+</html>
